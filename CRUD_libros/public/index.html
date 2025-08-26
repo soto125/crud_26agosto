@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>CRUD Usuarios con Fetch y Express</title>
+  <style>
+    button {
+      margin-left: 10px;
+    }
+    input {
+      margin: 5px;
+    }
+    ul {
+      list-style-type: none;
+      padding: 0;
+    }
+    li {
+      margin-bottom: 8px;
+    }
+  </style>
+</head>
+<body>
+  <h1>CRUD Usuarios</h1>
+
+  <div>
+    <h2>Lista de usuarios</h2>
+    <ul id="lista"></ul>
+  </div>
+
+  <div>
+    <h2>Agregar usuario</h2>
+    <input id="nombre" placeholder="Nombre" />
+    <input id="correo" placeholder="Correo" />
+    <button onclick="agregarUsuario()">Agregar</button>
+  </div>
+
+  <script>
+    async function obtenerUsuarios() {
+      try {
+        const res = await fetch('/usuarios');
+        if (!res.ok) throw new Error('Error al obtener usuarios');
+        const usuarios = await res.json();
+
+        const lista = document.getElementById('lista');
+        lista.innerHTML = '';
+
+        usuarios.forEach(u => {
+          const li = document.createElement('li');
+          li.textContent = `#${u.id} - ${u.nombre} (${u.correo}) `;
+
+          const btnActualizar = document.createElement('button');
+          btnActualizar.textContent = 'Actualizar';
+          btnActualizar.onclick = async () => {
+            const nuevoNombre = prompt('Nuevo nombre:', u.nombre);
+            if (!nuevoNombre) return alert('Nombre es obligatorio');
+            const nuevoCorreo = prompt('Nuevo correo:', u.correo);
+            if (!nuevoCorreo) return alert('Correo es obligatorio');
+
+            const res = await fetch('/usuarios/' + u.id, {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ nombre: nuevoNombre, correo: nuevoCorreo })
+            });
+
+            if (!res.ok) {
+              const errorData = await res.json();
+              alert('Error al actualizar: ' + (errorData.error || 'Desconocido'));
+              return;
+            }
+
+            obtenerUsuarios();
+          };
+
+          const btnEliminar = document.createElement('button');
+          btnEliminar.textContent = 'Eliminar';
+          btnEliminar.onclick = async () => {
+            if (confirm('¿Eliminar usuario?')) {
+              const res = await fetch('/usuarios/' + u.id, { method: 'DELETE' });
+              if (!res.ok) {
+                const errorData = await res.json();
+                alert('Error al eliminar: ' + (errorData.error || 'Desconocido'));
+                return;
+              }
+              obtenerUsuarios();
+            }
+          };
+
+          li.appendChild(btnActualizar);
+          li.appendChild(btnEliminar);
+
+          lista.appendChild(li);
+        });
+      } catch (err) {
+        alert(err.message);
+      }
+    }
+
+    async function agregarUsuario() {
+      const nombre = document.getElementById('nombre').value.trim();
+      const correo = document.getElementById('correo').value.trim();
+
+      if (!nombre || !correo) {
+        return alert('Nombre y correo son obligatorios');
+      }
+
+      try {
+        const res = await fetch('/usuarios', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ nombre, correo })
+        });
+
+        if (!res.ok) {
+          const errorData = await res.json();
+          alert('Error al agregar usuario: ' + (errorData.error || 'Desconocido'));
+          return;
+        }
+
+        document.getElementById('nombre').value = '';
+        document.getElementById('correo').value = '';
+
+        obtenerUsuarios();
+      } catch (err) {
+        alert('Error de red al agregar usuario');
+      }
+    }
+
+    // Cargar usuarios al inicio
+    obtenerUsuarios();
+  </script>
+</body>
+</html>
